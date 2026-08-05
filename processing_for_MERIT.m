@@ -1,11 +1,11 @@
 clear
 
 %% INPUT: select files
-Folder = 'C:\Users\crowe\Documents\MATLAB\VNA_measurements\playing_around_to_test_snp_to_csv';
+Folder = 'C:\Users\crowe\Documents\MATLAB\VNA_measurements\Aug_5_26_balloon_testing_round_2';
 antenna_locations = readmatrix([Folder '/8-antenna positions.csv']);  %origin is defined as the middle of the sample
 
-file_background = 'background_1.s8p';
-file_target = '200.s8p';
+file_background = 'back.s8p';
+file_target = 'full.s8p';
 
 %% define s-parameter objects
 s_background = sparameters([Folder '/' file_background]);
@@ -106,15 +106,18 @@ for i = 1:length(antenna_locations)
         'HorizontalAlignment', 'center');
 end
 
-%% Display 3D image 
-[grid_]= merit.domain.img2grid(img, points);
-new_grid_(:,:,1)= grid_;
-new_grid_(:,:,2)= grid_;
-merit.visualize.display_3D_scan(new_grid_, axes_);
+% %% Display 3D image 
+% [grid_]= merit.domain.img2grid(img, points);
+% new_grid_(:,:,1)= grid_;
+% new_grid_(:,:,2)= grid_;
+% merit.visualize.display_3D_scan(new_grid_, axes_);
+
 
 function y = isolateAntennas(a, num_ports, signal_array)
 arguments
     a (1,1) double
+    num_ports
+    signal_array
 end
 %gets Sij (where i=a, j=a) of signal array
 f = 1 + (num_ports+1)*(a - 1);  % eg for 8-antenna 1, 10, 19, 
