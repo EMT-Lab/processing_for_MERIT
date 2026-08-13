@@ -1,19 +1,31 @@
 clear
 
-%% INPUT: select files
-Folder = 'C:\Users\crowe\Documents\MATLAB\VNA_measurements\Aug_5_26_balloon_testing_round_2';
-antenna_locations = readmatrix([Folder '/8-antenna positions.csv']);  %origin is defined as the middle of the sample
+%% use UI to get background file and target files
+[file_background, background_path] = uigetfile({'*.s2p; *.s4p; *.s6p; *.s8p', 'SNP files'}, 'Select the background file', 'MultiSelect','off');
 
-file_background = 'back.s8p';
-file_target = 'full.s8p';
+[files, folderPath] = uigetfile({'*.s2p; *.s4p; *.s6p; *.s8p', 'SNP files'}, 'Select multiple target files', 'MultiSelect', 'on');
+numTargets = numel(files);
+
+antenna_locations = readmatrix([folderPath '/8-antenna positions.csv']);  %origin is defined as the middle of the sample
 
 %% define s-parameter objects
-s_background = sparameters([Folder '/' file_background]);
-s_target = sparameters([Folder '/' file_target]);
+s_background = sparameters([background_path '/' file_background]);
+
+% pre-allocates space for s-parameters
+s_all_target = sparameters.empty;
+s_all_diff = sparameters.empty;
+
+%% iterate through
+for k = 1:numTargets
+
+s_target = sparameters([folderPath char(files(k))]);
+s_all_target{k} = s_target;
 
 differential = s_target.Parameters - s_background.Parameters;
 frequencies = s_background.Frequencies; % assumes background and target have the same frequencies
 s_differential = sparameters(differential, frequencies); 
+
+s_all_diff{k} = s_differential;
 
 % define set-up
 num_ports = s_differential.NumPorts;
@@ -42,7 +54,8 @@ for row = 1:num_ports
     end
 end
 
-%signals = isolateAntennas(1, num_ports, signals) change the 1 to whichever
+signals = isolateAntennas(6, num_ports, signals);
+% change the 1 to whichever
 %antenna response you want to isolate
 
 % INPUT: MERIT parameters
@@ -53,7 +66,7 @@ phantom_height = 0.08; % per Carlos leave this as an option in .hemisphere
 [points, axes_] = merit.domain.hemisphere(phantom_radius, 'no_z', phantom_height, 'resolution', 2e-3);
 
 delays = merit.beamform.get_delays(channels, antenna_locations, ...
-   relative_permittivity=permittivity);
+   'relative_permittivity', permittivity);
 
 img = abs(merit.beamform(signals, frequencies, points, delays, ...
        merit.beamformers.DAS));  %DAS = Delay and Sum, DMAS, also options
@@ -64,7 +77,7 @@ im_slice = merit.domain.img2grid(img, points, axes_{1:2});
 figure
 imagesc(axes_{1:2},im_slice'); %imagesc(axes_{1:2}, im_slice');
 set(gca, 'YDir', 'normal');
-axis image;
+axis image;  % square image
 c = colorbar;
 c.Label.String = "Scattering Density";
 c.Label.FontSize = 12;
@@ -80,9 +93,13 @@ set(gca, 'Color', cmap(1,:));  % set background to lowest color (dark blue)
 xlim([-0.125 0.125]);
 ylim([-0.125 0.125]);
 set(gca, 'LooseInset', get(gca, 'TightInset'));
-
-
+title([char(files(k)) ' subtraction'], 'Interpreter', 'none');
+subtitle(['Reconstructed with beamformer permittivity set at ' num2str(permittivity)]);
 %% Plot antennas
+
+%input ports and make s11 the white one
+ports = [2 16 14 12 10 8 6 4];
+
 scatter(antenna_locations(:,1), antenna_locations(:,2), 'r', 'filled');
 
 r_offset = 0.0055; % adjust this (in meters) until it looks good
@@ -100,17 +117,13 @@ for i = 1:length(antenna_locations)
     x_text = x + r_offset * ux;
     y_text = y + r_offset * uy;
 
-    text(x_text, y_text, sprintf('A%d', i), ...
+    text(x_text, y_text, sprintf('A%d', ports(i)), ...
         'Color', 'w', ...
         'FontWeight', 'bold', ...
         'HorizontalAlignment', 'center');
 end
 
-% %% Display 3D image 
-% [grid_]= merit.domain.img2grid(img, points);
-% new_grid_(:,:,1)= grid_;
-% new_grid_(:,:,2)= grid_;
-% merit.visualize.display_3D_scan(new_grid_, axes_);
+end
 
 
 function y = isolateAntennas(a, num_ports, signal_array)
