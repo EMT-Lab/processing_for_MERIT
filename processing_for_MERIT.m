@@ -4,7 +4,11 @@ clear
 [file_background, background_path] = uigetfile({'*.s2p; *.s4p; *.s6p; *.s8p', 'SNP files'}, 'Select the background file', 'MultiSelect','off');
 
 [files, folderPath] = uigetfile({'*.s2p; *.s4p; *.s6p; *.s8p', 'SNP files'}, 'Select multiple target files', 'MultiSelect', 'on');
+if ischar(files) == true
+    numTargets = 1;
+else
 numTargets = numel(files);
+end
 
 antenna_locations = readmatrix([folderPath '/8-antenna positions.csv']);  %origin is defined as the middle of the sample
 
@@ -17,8 +21,12 @@ s_all_diff = sparameters.empty;
 
 %% iterate through
 for k = 1:numTargets
-
-s_target = sparameters([folderPath char(files(k))]);
+    if numTargets == 1
+        fileArray = files;
+    else
+        fileArray = files(k);
+    end
+s_target = sparameters([folderPath char(fileArray)]);
 s_all_target{k} = s_target;
 
 differential = s_target.Parameters - s_background.Parameters;
@@ -54,7 +62,7 @@ for row = 1:num_ports
     end
 end
 
-signals = isolateAntennas(6, num_ports, signals);
+%signals = isolateAntennas(1, num_ports, signals);
 % change the 1 to whichever
 %antenna response you want to isolate
 
@@ -93,12 +101,12 @@ set(gca, 'Color', cmap(1,:));  % set background to lowest color (dark blue)
 xlim([-0.125 0.125]);
 ylim([-0.125 0.125]);
 set(gca, 'LooseInset', get(gca, 'TightInset'));
-title([char(files(k)) ' subtraction'], 'Interpreter', 'none');
+title([char(fileArray) ' subtraction'], 'Interpreter', 'none');
 subtitle(['Reconstructed with beamformer permittivity set at ' num2str(permittivity)]);
 %% Plot antennas
 
-%input ports and make s11 the white one
-ports = [2 16 14 12 10 8 6 4];
+%input ports 
+ports = [1 2 3 4 5 6 7 8];
 
 scatter(antenna_locations(:,1), antenna_locations(:,2), 'r', 'filled');
 
